@@ -1,0 +1,83 @@
+/* Charts wrapper */
+.charts-wrapper {
+    display: flex;
+    flex-direction: column;
+    /* stack by default for small screens */
+    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Chart box shared styling */
+.chart-box {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Doughnut chart container */
+.chart-container-x {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+}
+
+/* Bar chart container */
+.chart-container-bar {
+    width: 100%;
+    height: 340px;
+}
+
+/* Small + medium screens (<1024px): stacked vertically */
+@media (max-width: 1023px) {
+    .chart-box {
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .chart-container-x {
+        width: 100%;
+        max-width: 260px;
+    }
+}
+
+/* Large screens (≥1024px): side-by-side layout */
+@media (min-width: 1024px) {
+    .charts-wrapper {
+        flex-direction: row;
+        align-items: stretch;
+        justify-content: center;
+        gap: 2rem;
+    }
+
+    /* .chart-box.doughnut {
+        /* flex: 2;
+        max-width: 33.33%;
+    } */
+
+    /* .chart-box.bar {
+        flex: 2;
+        max-width: 66.66%;
+        height: 400px;
+    } */
+
+    /* Make sure charts stretch equally */
+    .chart-container-x,
+    .chart-container-bar {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
