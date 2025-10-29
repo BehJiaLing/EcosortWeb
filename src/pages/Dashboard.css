@@ -1,0 +1,77 @@
+/* Wrapper flex layout */
+.dashboard-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Navbar stays on top */
+.dashboard-wrapper>nav {
+    height: 60px;
+}
+
+/* Main container uses flex to allow dynamic content width */
+.dashboard-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar width controlled by class */
+.sidebar {
+    transition: width 0.3s;
+    width: 250px;
+}
+
+.sidebar.collapsed {
+    width: 70px;
+}
+
+/* Main content fills remaining space */
+.main-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    transition: margin-left 0.3s;
+}
+
+.loading-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-size: 16px;
+    color: #666;
+}
+
+/* Table styling */
+.table-container {
+    overflow-x: auto;
+}
+
+.waste-table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.waste-table th {
+    background-color: #ccf5d8;
+    color: #000;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+}
+
+.waste-table td {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.waste-table tr.even {
+    background-color: #f9f9f9;
+}
+
+.waste-table tr.odd {
+    background-color: #fff;
+}
