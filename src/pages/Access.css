@@ -1,0 +1,208 @@
+.content-section {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.roles-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.roles-table th,
+.roles-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.roles-table th {
+    background-color: #ccf5d8;
+    font-weight: 600;
+}
+
+.roles-table tr.even {
+    background-color: #fafafa;
+}
+
+.roles-table tr.odd {
+    background-color: #fff;
+}
+
+/* .roles-table tr:hover {
+    background-color: #f0f0f0;
+} */
+
+.roles-table button {
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.roles-table button:hover {
+    background-color: #45a049;
+}
+
+.roles-table button svg {
+    margin: 0;
+}
+
+.loading-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    font-size: 16px;
+    color: #666;
+}
+
+.roles-table button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.content-section h2 {
+    font-size: 24px;
+    margin: 0;
+}
+
+.add-button {
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    background-color: #4caf50;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+}
+
+.add-button:hover {
+    background-color: #45a049;
+}
+
+.delete-btn {
+    background-color: #f44336;
+    border: none;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.delete-btn:hover:not(:disabled) {
+    background-color: #d32f2f;
+    /* darker red on hover */
+}
+
+.delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.save-btn {
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    background-color: #4caf50;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+}
+
+.close-btn {
+    font-size: 14px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    background-color: #000;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.2s;
+}
+
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* Modal content */
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    width: 80%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Modal header */
+.modal-header {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+/* Modal body */
+.modal-body {
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+/* Modal footer */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .header-container {
+        flex-direction: column;
+        align-items: flex-start;
+        /* optional */
+        gap: 10px;
+    }
+}
