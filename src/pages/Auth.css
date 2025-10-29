@@ -1,0 +1,108 @@
+.auth-container {
+    display: flex;
+    height: 100vh;
+    font-family: 'Josefin Sans', sans-serif;
+}
+
+/* Left panel */
+.auth-left {
+    flex: 1;
+    background-color: #ccf5d8;
+    /* light mint green */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.logo-section {
+    text-align: center;
+}
+
+.logo {
+    width: 200px;
+}
+
+/* Right panel */
+.auth-right {
+    flex: 1;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.auth-form {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #000;
+    text-align: center;
+}
+
+.auth-form input {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #999;
+    border-radius: 2px;
+    font-size: 14px;
+}
+
+.forgot-password {
+    text-align: right;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.forgot-password a {
+    font-size: 12px;
+    color: #d96f82;
+    text-decoration: none;
+}
+
+.login-btn {
+    background-color: #000;
+    color: #fff;
+    padding: 10px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+
+.signup-text {
+    font-size: 12px;
+    text-align: center;
+    color: #000;
+}
+
+.signup-link {
+    color: #d96f82;
+    /* pink */
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.password-field {
+    position: relative;
+    width: 92.5%;
+}
+
+.password-field input {
+    width: 100%;
+}
+
+.eye-icon {
+    position: absolute;
+    top: 40%;
+    right: 2px;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #555;
+    font-size: 18px;
+}
