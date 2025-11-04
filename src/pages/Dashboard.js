@@ -72,7 +72,7 @@ export default function Dashboard() {
 
             // Default content based on role
             if (parsedRole === "YnEt3wtlZpDFL2N6EHoH") { // Example: "User" role ID
-                setActiveContent("User Award");
+                setActiveContent("User Reward");
             } else {
                 setActiveContent("Dashboard");
             }
@@ -153,11 +153,11 @@ export default function Dashboard() {
                         onClose={() => setActiveContent("Access Management")}
                     />
                 );
-            case "Redeem Award":
+            case "Redeem Reward":
                 return <Redeem />;
-            case "Award Activity":
+            case "Reward Activity":
                 return <Award />;
-            case "User Award":
+            case "User Reward":
                 return <UserAward />;
             case "Profile":
                 return <Profile />;
