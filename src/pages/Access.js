@@ -15,15 +15,6 @@ export default function Access({ setActiveContent, setSelectedRole }) {
     const [editingRoleId, setEditingRoleId] = useState(null);
     const [deletingRoleId, setDeletingRoleId] = useState(null);
 
-    // User session token checking
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            localStorage.clear();
-            navigate("/error"); // <- redirect to error page
-        }
-    }, [navigate]);
-
     const fetchRoles = async (isInitial = false) => {
         if (isInitial) setLoading(true);
         try {
@@ -40,6 +31,7 @@ export default function Access({ setActiveContent, setSelectedRole }) {
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
+            localStorage.clear();
             navigate('/error');
         } else {
             fetchRoles(true);
