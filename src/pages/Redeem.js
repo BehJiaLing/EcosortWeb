@@ -258,7 +258,7 @@ export default function Redeem() {
             {editingAward && (
                 <div style={overlayStyle}>
                     <div style={{ background: "#fff", padding: 20, borderRadius: 8, width: 360 }}>
-                        <h3>{awards.some((a) => a.id === editingAward.id) ? "Edit Rewards" : "Add Award"}</h3>
+                        <h3>{awards.some((a) => a.id === editingAward.id) ? "Edit Reward" : "Add Reward"}</h3>
 
                         {/* Optional: show/edit ID only for new items */}
                         {/* {!awards.some((a) => a.id === editingAward.id) && (
@@ -278,7 +278,7 @@ export default function Redeem() {
                             value={editingAward.name}
                             onChange={(e) => setEditingAward({ ...editingAward, name: e.target.value })}
                             style={inputStyle}
-                            placeholder="Award name"
+                            placeholder="Reward name"
                         />
 
                         <label style={labelStyle}>Cost</label>
