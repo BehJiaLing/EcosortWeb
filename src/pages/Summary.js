@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { Doughnut, Bar } from "react-chartjs-2";
@@ -43,12 +43,14 @@ export default function Summary() {
     // Composition class filter (e.g., 'plastic', 'paper')
     const [classFilter, setClassFilter] = useState("all");
 
+    // Pagination (client-side)
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
+
     // Safer date parser (handles Date, ISO, Firestore Timestamp)
     const parseDateValue = (val) => {
         if (!val) return null;
-        if (typeof val?.toDate === "function") {
-            try { return val.toDate(); } catch { }
-        }
+        if (typeof val?.toDate === "function") { try { return val.toDate(); } catch { } }
         if (typeof val === "object") {
             if (typeof val.seconds === "number") return new Date(val.seconds * 1000);
             if (typeof val._seconds === "number") return new Date(val._seconds * 1000);
@@ -92,7 +94,7 @@ export default function Summary() {
         setCenterText({ label, total });
     }, [filter, wasteLogs]);
 
-    // Fetch summary + waste logs
+    // Fetch logs (exclude soft-deleted) + build Summary doughnut from filtered logs
     const fetchData = async () => {
         try {
             const token = localStorage.getItem("token");
@@ -102,31 +104,35 @@ export default function Summary() {
                 return;
             }
 
-            // Summary stats for Recyclable vs Non-Recyclable
-            const resSummary = await api.get("/api/waste/summary");
+            // Logs for table + charts
+            const resLogs = await api.get("/api/waste/all");
+            const raw = Array.isArray(resLogs.data) ? resLogs.data : [];
+
+            // exclude soft-deleted logs globally (defensive, backend already filters)
+            const visible = raw.filter(l => l?.deleted !== true);
+
+            const sorted = visible.sort((a, b) => {
+                const da = parseDateValue(a.collectedAt)?.getTime() || 0;
+                const db = parseDateValue(b.collectedAt)?.getTime() || 0;
+                return db - da;
+            });
+            setWasteLogs(sorted);
+
+            // Build Summary doughnut from same list
+            const totalRecyclable = sorted.filter(l => l.prediction === "Recyclable").length;
+            const totalNonRecyclable = sorted.filter(l => l.prediction === "Non-Recyclable").length;
+
             setChartData({
                 labels: ["Recyclable", "Non-Recyclable"],
                 datasets: [
                     {
                         label: "Total Waste",
-                        data: [
-                            resSummary.data.totalRecyclable,
-                            resSummary.data.totalNonRecyclable,
-                        ],
+                        data: [totalRecyclable, totalNonRecyclable],
                         backgroundColor: ["#4caf50", "#f44336"],
                         borderWidth: 1,
                     },
                 ],
             });
-
-            // Logs for table + charts
-            const resLogs = await api.get("/api/waste/all");
-            const sorted = (Array.isArray(resLogs.data) ? resLogs.data : []).sort((a, b) => {
-                const da = parseDateValue(a.collectedAt)?.getTime() || 0;
-                const db = parseDateValue(b.collectedAt)?.getTime() || 0;
-                return db - da; // newest first
-            });
-            setWasteLogs(sorted);
         } catch (err) {
             console.error("Failed to fetch summary data:", err);
             alert("Failed to load summary data");
@@ -146,21 +152,36 @@ export default function Summary() {
         return list;
     };
 
-    // Table rows: prediction + class filters
-    const displayedLogs = applyPredictionFilter(wasteLogs, filter).filter((log) => {
-        if (classFilter === "all") return true;
-        const wc = (log.waste_class || "-").toLowerCase();
-        return wc === classFilter;
-    });
+    // Table rows: prediction + class filters (wasteLogs already excludes deleted)
+    const filteredLogs = useMemo(() => {
+        const afterPred = applyPredictionFilter(wasteLogs, filter);
+        return afterPred.filter((log) => {
+            if (classFilter === "all") return true;
+            const wc = (log.waste_class || "-").toLowerCase();
+            return wc === classFilter;
+        });
+    }, [wasteLogs, filter, classFilter]);
 
-    // Export (respects current filters)
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [filter, classFilter, pageSize]);
+
+    // Current page slice
+    const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+    const pagedLogs = useMemo(() => {
+        const start = (page - 1) * pageSize;
+        return filteredLogs.slice(start, start + pageSize);
+    }, [filteredLogs, page, pageSize]);
+
+    // Export (exports ALL filtered rows, not just current page)
     const exportToExcel = () => {
-        if (!displayedLogs.length) {
+        if (!filteredLogs.length) {
             alert("No logs to export");
             return;
         }
 
-        const rows = displayedLogs.map((log) => {
+        const rows = filteredLogs.map((log) => {
             const d = parseDateValue(log.collectedAt);
             return {
                 "Waste ID": log.wasteId ?? log.id ?? "-",
@@ -186,6 +207,11 @@ export default function Summary() {
             legend: { display: false },
             tooltip: { enabled: true },
             centerText: { label: centerText.label, total: centerText.total },
+            title: {
+                display: true,
+                text: "Waste Recyclability Summary",
+                font: { size: 14, weight: "bold" },
+            },
         },
         cutout: "60%",
         onClick: (evt, elements) => {
@@ -229,7 +255,7 @@ export default function Summary() {
         plugins: {
             legend: {
                 display: true,
-                position: "left",  // 👈 move legend to the left
+                position: "left",
                 align: "center",
                 labels: {
                     boxWidth: 14,
@@ -239,6 +265,11 @@ export default function Summary() {
             },
             tooltip: { enabled: true },
             title: { display: false },
+            title: {
+                display: true,
+                text: "Waste Classes Classification Composition",
+                font: { size: 14, weight: "bold" },
+            },
         },
         cutout: 0, // full pie
         onClick: (evt, elements) => {
@@ -366,12 +397,11 @@ export default function Summary() {
                         <div className="chart-container-x">
                             <Doughnut
                                 data={compositionData}
-                                options={compositionOptions}  // full pie, no legend/tooltips/center text
+                                options={compositionOptions}
                             />
                         </div>
                     )}
                 </div>
-
             </div>
 
             {/* Waste Logs Table */}
@@ -381,11 +411,28 @@ export default function Summary() {
                         {filter === "all" ? "All Waste Logs" : `${filter} Waste Logs`}
                         {classFilter !== "all" ? ` • ${classFilter}` : ""}
                     </h2>
-                    {!loading && (
-                        <button className="export-button" onClick={exportToExcel} style={{ cursor: "pointer" }}>
-                            <FontAwesomeIcon icon={faFileExcel} /> Export
-                        </button>
-                    )}
+
+                    {/* Page size selector */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <label style={{ fontSize: 12, color: "#555" }}>Rows per page:</label>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => setPageSize(Number(e.target.value))}
+                            className="search-input"
+                            style={{ width: 90, padding: "6px 8px" }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+
+                        {!loading && (
+                            <button className="export-button" onClick={exportToExcel} style={{ cursor: "pointer" }}>
+                                <FontAwesomeIcon icon={faFileExcel} /> Export
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -407,12 +454,13 @@ export default function Summary() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {displayedLogs.length ? (
-                                    displayedLogs.map((log, index) => {
+                                {pagedLogs.length ? (
+                                    pagedLogs.map((log, idx) => {
                                         const d = parseDateValue(log.collectedAt);
+                                        const rowNumber = (page - 1) * pageSize + idx + 1;
                                         return (
-                                            <tr key={log.id || log.wasteId || index}>
-                                                <td>{index + 1}</td>
+                                            <tr key={log.id || log.wasteId || rowNumber}>
+                                                <td>{rowNumber}</td>
                                                 <td>{log.wasteId}</td>
                                                 <td>{d ? d.toLocaleString() : "Invalid date"}</td>
                                                 <td>{log.prediction || "Unknown"}</td>
@@ -431,6 +479,35 @@ export default function Summary() {
                                 )}
                             </tbody>
                         </table>
+
+                        {/* Pagination controls */}
+                        {filteredLogs.length > 0 && (
+                            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, alignItems: "center", gap: 12 }}>
+                                <div style={{ fontSize: 12, color: "#555" }}>
+                                    Showing {filteredLogs.length ? (page - 1) * pageSize + 1 : 0}
+                                    {" - "}
+                                    {Math.min(page * pageSize, filteredLogs.length)} of {filteredLogs.length}
+                                </div>
+
+                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                    <button
+                                        disabled={page <= 1}
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    >
+                                        Prev
+                                    </button>
+                                    <span style={{ fontSize: 12 }}>
+                                        Page {page} / {totalPages}
+                                    </span>
+                                    <button
+                                        disabled={page >= totalPages}
+                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
