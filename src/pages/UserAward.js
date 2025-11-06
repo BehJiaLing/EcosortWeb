@@ -4,6 +4,7 @@ import api from "../services/api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faQrcode } from "@fortawesome/free-solid-svg-icons";
 import { Scanner } from "@yudiel/react-qr-scanner";
+import Barcode from "react-barcode"; 
 import "./WasteLog.css";
 
 export default function UserAward() {
@@ -21,9 +22,12 @@ export default function UserAward() {
     const [awards, setAwards] = useState([]);
     const [catalogLoading, setCatalogLoading] = useState(false);
     const [selectedAwardId, setSelectedAwardId] = useState(null);
-    const selectedAward = awards.find(a => a.id === selectedAwardId);
+    const selectedAward = awards.find((a) => a.id === selectedAwardId);
 
-    // helper to safely parse dates
+    // Barcode modal for redeemed rewards
+    const [barcodeOpen, setBarcodeOpen] = useState(false);
+    const [barcodeValue, setBarcodeValue] = useState("");
+
     const parseDateValue = (val) => {
         if (!val) return null;
         const d = new Date(val);
@@ -121,7 +125,6 @@ export default function UserAward() {
 
         setCatalogLoading(true);
         try {
-            // Prefer { awardId } so backend uses auth user; if your API needs userId, uncomment fallback
             const token = localStorage.getItem("token");
             let res;
             try {
@@ -131,7 +134,6 @@ export default function UserAward() {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             } catch (e1) {
-                // Fallback if your server requires userId:
                 res = await api.post(
                     "/api/award/redeem",
                     { userId: userData.id, awardId: selectedAwardId },
@@ -141,14 +143,14 @@ export default function UserAward() {
 
             const { newBalance, award } = res.data || {};
             alert(`✅ Redeemed “${award?.name || selectedAwardId}”. New balance: ${newBalance} pts.`);
-            // Optimistically update points
-            setUserData((prev) => prev ? { ...prev, points: typeof newBalance === "number" ? newBalance : (prev.points - cost) } : prev);
+            setUserData((prev) =>
+                prev ? { ...prev, points: typeof newBalance === "number" ? newBalance : prev.points - cost } : prev
+            );
 
-            // Refresh just the user's redeem history
             try {
                 const resRedeem = await api.get(`/api/award/redeem-history?userId=${userData.id}`);
                 setRedeemHistory(Array.isArray(resRedeem.data) ? resRedeem.data : []);
-            } catch { /* ignore */ }
+            } catch { }
 
             setSelectedAwardId(null);
             setRedeemModalOpen(false);
@@ -160,13 +162,27 @@ export default function UserAward() {
         }
     };
 
+    // Open/close barcode modal for a redeemed reward (id = redeem doc ID)
+    const openBarcode = (redeemDocId) => {
+        if (!redeemDocId) {
+            alert("No reward ID found to generate barcode.");
+            return;
+        }
+        setBarcodeValue(String(redeemDocId));
+        setBarcodeOpen(true);
+    };
+    const closeBarcode = () => {
+        setBarcodeOpen(false);
+        setBarcodeValue("");
+    };
+
     return (
         <div className="content-section">
             {/* Collect Scanner Modal */}
             {scanning && (
                 <div style={overlayStyle}>
                     <h2 style={{ color: "white", marginBottom: 10 }}>Scan Waste QR Code</h2>
-                    <div style={{ width: "90%", maxWidth: 400 }}>
+                    <div style={{ width: "90%", maxWidth: 400, background: "#000", padding: 8, borderRadius: 8 }}>
                         <Scanner
                             onScan={(result) => {
                                 if (result && result.length > 0) {
@@ -182,7 +198,35 @@ export default function UserAward() {
                 </div>
             )}
 
-            {/* NEW: Redeem Catalog Modal */}
+            {/* Barcode Modal for redeemed reward */}
+            {barcodeOpen && (
+                <div style={overlayStyle}>
+                    <div style={{ background: "#fff", padding: 20, borderRadius: 12, width: "min(600px, 92%)", textAlign: "center" }}>
+                        <h2 style={{ marginBottom: 8 }}>Show this barcode to the shop</h2>
+                        {/* <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
+                            Reward ID: <b>{barcodeValue}</b>
+                        </div> */}
+
+                        {/* The actual barcode */}
+                        <div style={{ background: "#ffffff", padding: 16, borderRadius: 8, display: "inline-block" }}>
+                            <Barcode
+                                value={barcodeValue}
+                                width={2}           // thickness of bars
+                                height={120}        // height of barcode
+                                displayValue={true} // show text under barcode
+                                fontSize={14}
+                                margin={0}
+                            />
+                        </div>
+
+                        <div style={{ marginTop: 18 }}>
+                            <button onClick={closeBarcode} style={secondaryBtn}>Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Redeem Catalog Modal */}
             {redeemModalOpen && (
                 <div style={overlayStyle}>
                     <div style={{ background: "#fff", padding: 20, borderRadius: 12, width: "min(720px, 92%)", maxHeight: "80vh", overflow: "auto" }}>
@@ -228,11 +272,25 @@ export default function UserAward() {
                                     <button onClick={() => setRedeemModalOpen(false)} style={secondaryBtn}>Close</button>
                                     <button
                                         onClick={doSelfRedeem}
-                                        disabled={!selectedAwardId || (userData?.points ?? 0) < Number(selectedAward?.cost ?? 0) || catalogLoading}
+                                        disabled={
+                                            !selectedAwardId ||
+                                            (userData?.points ?? 0) < Number(selectedAward?.cost ?? 0) ||
+                                            catalogLoading
+                                        }
                                         style={{
                                             ...primaryBtn,
-                                            backgroundColor: !selectedAwardId || (userData?.points ?? 0) < Number(selectedAward?.cost ?? 0) || catalogLoading ? "#9ca3af" : "#4caf50",
-                                            cursor: !selectedAwardId || (userData?.points ?? 0) < Number(selectedAward?.cost ?? 0) || catalogLoading ? "not-allowed" : "pointer",
+                                            backgroundColor:
+                                                !selectedAwardId ||
+                                                    (userData?.points ?? 0) < Number(selectedAward?.cost ?? 0) ||
+                                                    catalogLoading
+                                                    ? "#9ca3af"
+                                                    : "#4caf50",
+                                            cursor:
+                                                !selectedAwardId ||
+                                                    (userData?.points ?? 0) < Number(selectedAward?.cost ?? 0) ||
+                                                    catalogLoading
+                                                    ? "not-allowed"
+                                                    : "pointer",
                                         }}
                                     >
                                         {catalogLoading ? <FontAwesomeIcon icon={faSpinner} spin /> : "Redeem"}
@@ -310,7 +368,7 @@ export default function UserAward() {
                 )}
             </div>
 
-            {/* Redeem History Table */}
+            {/* Redeem History Table + Barcode trigger */}
             <div className="waste-history" style={{ marginBottom: 20 }}>
                 <h2 style={{ marginBottom: 20 }}>Redeem History</h2>
                 {loading ? (
@@ -326,6 +384,7 @@ export default function UserAward() {
                                     <th>Reward</th>
                                     <th>Cost (pts)</th>
                                     <th>Redeemed Date</th>
+                                    <th>Barcode</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -344,12 +403,21 @@ export default function UserAward() {
                                                     <td>{row.awardName || row.awardId}</td>
                                                     <td>{row.cost ?? "-"}</td>
                                                     <td>{d ? d.toLocaleString() : "Invalid date"}</td>
+                                                    <td>
+                                                        <button
+                                                            className="add-button"
+                                                            onClick={() => openBarcode(row.id)}
+                                                            title="Show barcode for this reward"
+                                                        >
+                                                            Show Barcode
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             );
                                         })
                                 ) : (
                                     <tr>
-                                        <td colSpan="4" style={{ textAlign: "center" }}>No redeem history found</td>
+                                        <td colSpan="5" style={{ textAlign: "center" }}>No redeem history found</td>
                                     </tr>
                                 )}
                             </tbody>
