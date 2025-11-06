@@ -268,7 +268,7 @@ export default function UserAward() {
 
             {/* Waste History Table */}
             <div className="waste-history" style={{ marginBottom: 20 }}>
-                <h2 style={{ marginBottom: 20 }}>Waste History</h2>
+                <h2 style={{ marginBottom: 20 }}>Waste Collection History</h2>
                 {loading ? (
                     <div className="loading-section">
                         <FontAwesomeIcon icon={faSpinner} spin /> Loading table...
