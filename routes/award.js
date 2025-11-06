@@ -9,7 +9,7 @@ module.exports = (db) => {
     router.get("/users", async (req, res) => {
         try {
             const { month } = req.query;
-            const allowedRoles = ["YnEt3wtlZpDFL2N6EHoH", "mfPFOoUlvIuMgmjHova3"]; 
+            const allowedRoles = ["YnEt3wtlZpDFL2N6EHoH", "mfPFOoUlvIuMgmjHova3"];
 
             const usersSnapshot = await db
                 .collection("users")
@@ -118,12 +118,30 @@ module.exports = (db) => {
         }
     });
 
-    // REDEEM award
+    // REDEEM award 
     router.post("/redeem", authMiddleware, async (req, res) => {
         try {
-            const { userId, awardId } = req.body;
-            if (!userId || !awardId)
-                return res.status(400).json({ error: "Missing userId or awardId" });
+            const authedUserId = req.user?.id || null;
+            const { userId: bodyUserId, awardId, barcodeId } = req.body;
+
+            const userId = bodyUserId || authedUserId;
+            if (!userId) return res.status(401).json({ error: "Unauthorized (no user)" });
+            if (!awardId) return res.status(400).json({ error: "Missing awardId" });
+
+            // sanity-check barcodeId format/length
+            let barcodeToStore = typeof barcodeId === "string" && barcodeId.length <= 64 ? barcodeId : null;
+
+            // uniqueness check (fast path; not strictly required)
+            if (barcodeToStore) {
+                const dup = await db
+                    .collection("redeem_history")
+                    .where("barcodeId", "==", barcodeToStore)
+                    .limit(1)
+                    .get();
+                if (!dup.empty) {
+                    return res.status(400).json({ error: "Duplicate barcodeId" });
+                }
+            }
 
             const userRef = db.collection("users").doc(userId);
             const awardRef = db.collection("award").doc(awardId);
@@ -139,24 +157,40 @@ module.exports = (db) => {
             if ((user.points || 0) < cost)
                 return res.status(400).json({ error: "Not enough points to redeem" });
 
+            let newBalanceOut = (user.points || 0) - cost;
+            let historyIdOut = null;
+
             await db.runTransaction(async (t) => {
-                const newBalance = (user.points || 0) - cost;
+                const userDoc = await t.get(userRef);
+                const currentPoints = userDoc.data()?.points || 0;
+                const newBalance = currentPoints - cost;
+                if (newBalance < 0) throw new Error("Insufficient points (race)");
+
                 t.update(userRef, { points: newBalance });
 
                 const historyRef = db.collection("redeem_history").doc();
+                historyIdOut = historyRef.id;
+
                 t.set(historyRef, {
                     userId,
                     awardId,
-                    redeemedAt: new Date(),
-                    cost,
                     awardName: award.name,
+                    cost,
+                    redeemedAt: new Date(),
+                    barcodeId: barcodeToStore || null,   
+                    statusBarcode: "active",                    
                 });
+
+                newBalanceOut = newBalance;
             });
 
             res.json({
                 message: "Redeemed successfully",
                 award,
-                newBalance: (user.points || 0) - cost,
+                newBalance: newBalanceOut,
+                redeemId: historyIdOut,
+                barcodeId: barcodeToStore || null,
+                statusBarcode: statusBarcode,
             });
         } catch (err) {
             console.error("Redeem award error:", err);
@@ -183,7 +217,7 @@ module.exports = (db) => {
 
     /* ---------------------------- REDEEM ---------------------------- */
 
-    // redeem-history
+    // redeem-history (returns barcodeId automatically via ...data)
     router.get("/redeem-history", authMiddleware, async (req, res) => {
         try {
             const { userId, limit: lim } = req.query;
@@ -191,10 +225,8 @@ module.exports = (db) => {
             let q = db.collection("redeem_history");
 
             if (userId) {
-                // user-specific history
                 q = q.where("userId", "==", userId).orderBy("redeemedAt", "desc");
             } else {
-                // all users: just return latest N
                 q = q.orderBy("redeemedAt", "desc").limit(Number(lim) || 200);
             }
 
@@ -203,21 +235,17 @@ module.exports = (db) => {
             const rows = snap.docs.map((doc) => {
                 const data = doc.data();
                 let redeemedAt = data.redeemedAt;
-                if (redeemedAt?.toDate) {
-                    redeemedAt = redeemedAt.toDate();
-                }
+                if (redeemedAt?.toDate) redeemedAt = redeemedAt.toDate();
                 return {
                     id: doc.id,
-                    ...data,
-                    redeemedAt, // keep as Date for the client (optional)
+                    ...data,         // includes barcodeId if present
+                    redeemedAt,
                 };
             });
 
             res.json(rows);
         } catch (err) {
             console.error("Fetch redeem history error:", err);
-            // Firestore may require an index for where(userId) + orderBy(redeemedAt)
-            // If you see an index error, visit the console link it prints to create one.
             res.status(500).json({ error: "Failed to load redeem history" });
         }
     });

@@ -4,7 +4,7 @@ import api from "../services/api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faQrcode } from "@fortawesome/free-solid-svg-icons";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import Barcode from "react-barcode"; 
+import Barcode from "react-barcode";
 import "./WasteLog.css";
 
 export default function UserAward() {
@@ -14,26 +14,36 @@ export default function UserAward() {
     const [wasteHistory, setWasteHistory] = useState([]);
     const [redeemHistory, setRedeemHistory] = useState([]);
 
-    // Collect (waste) QR scanner
+    // QR scanner for collect
     const [scanning, setScanning] = useState(false);
 
-    // self-serve redeem modal + catalog
+    // Redeem catalog modal
     const [redeemModalOpen, setRedeemModalOpen] = useState(false);
     const [awards, setAwards] = useState([]);
     const [catalogLoading, setCatalogLoading] = useState(false);
     const [selectedAwardId, setSelectedAwardId] = useState(null);
     const selectedAward = awards.find((a) => a.id === selectedAwardId);
 
-    // Barcode modal for redeemed rewards
+    // Barcode modal
     const [barcodeOpen, setBarcodeOpen] = useState(false);
     const [barcodeValue, setBarcodeValue] = useState("");
 
+    // --- helpers ---
     const parseDateValue = (val) => {
         if (!val) return null;
         const d = new Date(val);
         return isNaN(d) ? null : d;
     };
 
+    // Random barcode: readable + unique-ish for the day (prefix + yyyymmdd + 6 base36)
+    const generateBarcodeId = () => {
+        const prefix = "RB"; // Redeem Barcode
+        const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const randPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+        return `${prefix}-${datePart}-${randPart}`;
+    };
+
+    // --- data load ---
     const fetchData = async () => {
         try {
             const token = localStorage.getItem("token");
@@ -91,7 +101,7 @@ export default function UserAward() {
     const handleError = (err) => console.error("QR Scan Error:", err);
     const handleCollect = () => setScanning(true);
 
-    // --- Self-serve redeem flow ---
+    // --- Redeem flow ---
     const openRedeemModal = async () => {
         setRedeemModalOpen(true);
         setSelectedAwardId(null);
@@ -123,34 +133,43 @@ export default function UserAward() {
             return;
         }
 
+        // Generate and attach barcode to the redemption (server must store this in redeem_history)
+        const barcodeId = generateBarcodeId();
+
         setCatalogLoading(true);
         try {
             const token = localStorage.getItem("token");
+
+            // Primary: server infers user from token
             let res;
             try {
                 res = await api.post(
                     "/api/award/redeem",
-                    { awardId: selectedAwardId },
+                    { awardId: selectedAwardId, barcodeId },   // 👈 include the barcode we want to persist
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             } catch (e1) {
+                // Fallback: older server requires explicit userId
                 res = await api.post(
                     "/api/award/redeem",
-                    { userId: userData.id, awardId: selectedAwardId },
+                    { userId: userData.id, awardId: selectedAwardId, barcodeId },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
 
             const { newBalance, award } = res.data || {};
             alert(`✅ Redeemed “${award?.name || selectedAwardId}”. New balance: ${newBalance} pts.`);
+
+            // Update points locally
             setUserData((prev) =>
                 prev ? { ...prev, points: typeof newBalance === "number" ? newBalance : prev.points - cost } : prev
             );
 
+            // Refresh redeem history so each item includes stored barcodeId from Firestore
             try {
                 const resRedeem = await api.get(`/api/award/redeem-history?userId=${userData.id}`);
                 setRedeemHistory(Array.isArray(resRedeem.data) ? resRedeem.data : []);
-            } catch { }
+            } catch { /* ignore */ }
 
             setSelectedAwardId(null);
             setRedeemModalOpen(false);
@@ -162,13 +181,13 @@ export default function UserAward() {
         }
     };
 
-    // Open/close barcode modal for a redeemed reward (id = redeem doc ID)
-    const openBarcode = (redeemDocId) => {
-        if (!redeemDocId) {
-            alert("No reward ID found to generate barcode.");
+    // --- Barcode modal control (uses stored barcodeId from row) ---
+    const openBarcode = (barcodeIdFromRow) => {
+        if (!barcodeIdFromRow) {
+            alert("No barcode found for this reward.");
             return;
         }
-        setBarcodeValue(String(redeemDocId));
+        setBarcodeValue(String(barcodeIdFromRow));
         setBarcodeOpen(true);
     };
     const closeBarcode = () => {
@@ -198,22 +217,18 @@ export default function UserAward() {
                 </div>
             )}
 
-            {/* Barcode Modal for redeemed reward */}
+            {/* Barcode Modal (shows stored barcodeId) */}
             {barcodeOpen && (
                 <div style={overlayStyle}>
                     <div style={{ background: "#fff", padding: 20, borderRadius: 12, width: "min(600px, 92%)", textAlign: "center" }}>
                         <h2 style={{ marginBottom: 8 }}>Show this barcode to the shop</h2>
-                        {/* <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 16 }}>
-                            Reward ID: <b>{barcodeValue}</b>
-                        </div> */}
 
-                        {/* The actual barcode */}
                         <div style={{ background: "#ffffff", padding: 16, borderRadius: 8, display: "inline-block" }}>
                             <Barcode
                                 value={barcodeValue}
-                                width={2}           // thickness of bars
-                                height={120}        // height of barcode
-                                displayValue={true} // show text under barcode
+                                width={2}
+                                height={120}
+                                displayValue={true}
                                 fontSize={14}
                                 margin={0}
                             />
@@ -368,7 +383,7 @@ export default function UserAward() {
                 )}
             </div>
 
-            {/* Redeem History Table + Barcode trigger */}
+            {/* Redeem History Table (shows barcode button using stored barcodeId) */}
             <div className="waste-history" style={{ marginBottom: 20 }}>
                 <h2 style={{ marginBottom: 20 }}>Redeem History</h2>
                 {loading ? (
@@ -397,6 +412,7 @@ export default function UserAward() {
                                         })
                                         .map((row, index) => {
                                             const d = parseDateValue(row.redeemedAt);
+                                            const hasBarcode = !!row.barcodeId; // 👈 backend must return this
                                             return (
                                                 <tr key={row.id || `${row.awardId}-${index}`}>
                                                     <td>{index + 1}</td>
@@ -406,8 +422,10 @@ export default function UserAward() {
                                                     <td>
                                                         <button
                                                             className="add-button"
-                                                            onClick={() => openBarcode(row.id)}
-                                                            title="Show barcode for this reward"
+                                                            onClick={() => openBarcode(row.barcodeId)}
+                                                            title={hasBarcode ? "Show barcode for this reward" : "No barcode found"}
+                                                            disabled={!hasBarcode}
+                                                            style={{ opacity: hasBarcode ? 1 : 0.6, cursor: hasBarcode ? "pointer" : "not-allowed" }}
                                                         >
                                                             Show Barcode
                                                         </button>
