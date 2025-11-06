@@ -3,15 +3,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import * as XLSX from "xlsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faUndo, faFileExcel, faSearch, faBroom } from "@fortawesome/free-solid-svg-icons";
+import { faSpinner, faUndo, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 import "./WasteLog.css";
 import "./Summary.css";
 
 export default function Tracking() {
     const [loading, setLoading] = useState(false);
     const [allRows, setAllRows] = useState([]);   // raw data (fetched once)
-    const [page, setPage] = useState(1);
-    const pageSize = 20;
 
     // Filters (client-side)
     const [dateFrom, setDateFrom] = useState("");
@@ -26,7 +24,6 @@ export default function Tracking() {
         try {
             const res = await api.get(`/api/waste/deleted`);
             setAllRows(res.data || []);
-            setPage(1);
         } catch (err) {
             console.error(err);
             alert(err.response?.data?.error || "Failed to fetch tracking data");
@@ -46,7 +43,7 @@ export default function Tracking() {
         return isNaN(d) ? s : d.toLocaleString();
     };
 
-    // Client-side filter: Deleted By + Date range on deletedAt (or on timestamp if you prefer)
+    // Client-side filter: Deleted By + Date range on deletedAt (or on timestamp if preferred)
     const filteredRows = useMemo(() => {
         const from = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
         const to = dateTo ? new Date(`${dateTo}T23:59:59.999`) : null;
@@ -56,7 +53,7 @@ export default function Tracking() {
             // deletedBy filter
             if (email && !(r.deletedBy || "").toLowerCase().includes(email)) return false;
 
-            // date range filter on deletedAt (use timestamp if you want collected range instead)
+            // date range filter on deletedAt
             const basis = r.deletedAt || null;
             if (from || to) {
                 if (!basis) return false;
@@ -70,19 +67,13 @@ export default function Tracking() {
         });
     }, [allRows, dateFrom, dateTo, userEmail]);
 
-    // Pagination from filtered
-    const totalPages = Math.ceil(filteredRows.length / pageSize) || 1;
-    const paged = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        return filteredRows.slice(start, start + pageSize);
-    }, [filteredRows, page]);
-
     // Export only filtered rows
     const exportExcel = () => {
         if (!filteredRows.length) return alert("Nothing to export");
         const data = filteredRows.map((r) => ({
             "Waste ID": r.id,
             "Prediction": r.prediction ?? "-",
+            "Waste Class": r.waste_class ?? "Unknown",
             "Confidence": r.confidence != null ? Math.round(r.confidence * 100) + "%" : "-",
             "Collected At": r.timestamp ? formatTime(r.timestamp) : "-",
             "Deleted At": r.deletedAt ? formatTime(r.deletedAt) : "-",
@@ -107,19 +98,9 @@ export default function Tracking() {
         }
     };
 
-    // Clear only the Deleted By search (stay on the same date range)
-    const clearDeletedBy = () => {
-        if (!userEmail) return;
-        setUserEmail("");
-        setPage(1);
-    };
-
-    // “Search” now just resets to page 1 (filtering is automatic via useMemo)
-    const applyFilters = () => setPage(1);
-
     return (
         <div className="content-section">
-            <h2 style={{ marginBottom: 16 }}>Audit & Tracking</h2>
+            <h2 style={{ marginBottom: 16 }}>Audit &amp; Tracking</h2>
 
             {/* Filters (client-side) */}
             <div className="search-filter-container" style={{ gap: 12, flexWrap: "wrap" }}>
@@ -157,21 +138,7 @@ export default function Tracking() {
                         value={userEmail}
                         onChange={(e) => setUserEmail(e.target.value)}
                     />
-                    {/* <button
-                        className="add-button"
-                        type="button"
-                        onClick={clearDeletedBy}
-                        title="Clear Deleted By"
-                        disabled={loading || !userEmail}
-                    >
-                        <FontAwesomeIcon icon={faBroom} /> Clear
-                    </button> */}
                 </div>
-
-                {/* This no longer fetches; it just resets to page 1 */}
-                {/* <button className="add-button" onClick={applyFilters} disabled={loading}>
-                    <FontAwesomeIcon icon={faSearch} /> Apply
-                </button> */}
 
                 <button className="export-button" onClick={exportExcel} disabled={loading}>
                     <FontAwesomeIcon icon={faFileExcel} /> Export
@@ -198,8 +165,8 @@ export default function Tracking() {
                             </tr>
                         </thead>
                         <tbody>
-                            {paged.length ? (
-                                paged.map((r, idx) => (
+                            {filteredRows.length ? (
+                                filteredRows.map((r, idx) => (
                                     <tr key={r.id ?? idx}>
                                         <td>{r.id}</td>
                                         <td>{r.prediction ?? "-"}</td>
@@ -217,20 +184,11 @@ export default function Tracking() {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="7" style={{ textAlign: "center" }}>No deleted logs found</td>
+                                    <td colSpan="8" style={{ textAlign: "center" }}>No deleted logs found</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
-
-                    {/* Pagination */}
-                    {filteredRows.length > pageSize && (
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
-                            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
-                            <span>Page {page} / {totalPages}</span>
-                            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
-                        </div>
-                    )}
                 </div>
             )}
         </div>
