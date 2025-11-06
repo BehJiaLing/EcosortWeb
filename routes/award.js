@@ -3,6 +3,8 @@ module.exports = (db) => {
     const authMiddleware = require("../middleware/authMiddleware");
     const router = express.Router();
 
+    /* ----------------------------- REWARD RANKING ----------------------------- */
+
     // list the users with points (optionally filtered by month)
     router.get("/users", async (req, res) => {
         try {

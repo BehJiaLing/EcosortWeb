@@ -94,6 +94,7 @@ module.exports = (db) => {
         }
     });
 
+    // Get user list by role ID
     router.get('/roles/:id/users', async (req, res) => {
         try {
             const roleId = req.params.id;
@@ -125,7 +126,7 @@ module.exports = (db) => {
     //     } catch (err) {
     //         res.status(500).json({ error: err.message });
     //     }
-    // });
+    // }); 
 
     // --- NEW: remove user from role (set role to default 'user' role id if exists, else null) ---
     router.delete('/roles/:id/users/:userId', async (req, res) => {
