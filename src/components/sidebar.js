@@ -18,7 +18,7 @@ const Sidebar = ({ isCollapsed, onMenuClick, activeMenu, allowedPages }) => {
         { name: "Waste Logs", icon: faRecycle },
         { name: "Waste Audit", icon: faHistory },
         { name: "Access Management", icon: faUserShield },
-        { name: "Reward Activity", icon: faTrophy },
+        { name: "Point Ranking", icon: faTrophy },
         { name: "Redeem Reward", icon: faWebAwesome },
         { name: "User Reward", icon: faAward },
         { name: "Profile", icon: faUser },

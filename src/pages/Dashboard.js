@@ -155,7 +155,7 @@ export default function Dashboard() {
                 );
             case "Redeem Reward":
                 return <Redeem />;
-            case "Reward Activity":
+            case "Point Ranking":
                 return <Award />;
             case "User Reward":
                 return <UserAward />;
