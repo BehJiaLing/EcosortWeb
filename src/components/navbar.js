@@ -16,9 +16,9 @@ const Navbar = ({ toggleSidebar, isSidebarVisible }) => {
             case "tVyg7N1TvIJrJK0VLGTI":
                 return "Admin";
             case "YnEt3wtlZpDFL2N6EHoH":
-                return "Student";
-            default:
                 return "User";
+            default:
+                return "";
         }
     };
 
