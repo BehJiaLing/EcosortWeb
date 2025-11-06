@@ -102,7 +102,7 @@ export default function WasteLog({ onDateClick }) {
         if (onDateClick) onDateClick(date);
     };
 
-    const todayStr = new Date().toISOString().split("T")[0]; // 🟩 for max attribute
+    const todayStr = new Date().toISOString().split("T")[0]; 
 
     return (
         <div className="content-section">

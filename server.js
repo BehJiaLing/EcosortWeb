@@ -8,7 +8,7 @@ const path = require('path');
 const cron = require('node-cron');
 
 // --- Initialize Firebase Admin ---
-const serviceAccount = require('./firebase-key.json'); // put service account in project root
+const serviceAccount = require('./firebase-key.json'); 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
@@ -63,7 +63,7 @@ async function cleanupUnverifiedUsers() {
     try {
         console.log("🧹 Running cleanup job on server start...");
 
-        const DAYS = 3; // how many days before auto-deletion
+        const DAYS = 3; 
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - DAYS);
 
@@ -90,7 +90,7 @@ async function cleanupUnverifiedUsers() {
     }
 }
 
-// 🟢 Run cleanup immediately on server startup
+// Run cleanup immediately on server startup
 // cleanupUnverifiedUsers();
 
 // --- quick health check --- 
