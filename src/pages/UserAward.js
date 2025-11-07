@@ -4,7 +4,6 @@ import api from "../services/api";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faQrcode } from "@fortawesome/free-solid-svg-icons";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import Barcode from "react-barcode";
 import "./WasteLog.css";
 
 export default function UserAward() {
@@ -24,23 +23,11 @@ export default function UserAward() {
     const [selectedAwardId, setSelectedAwardId] = useState(null);
     const selectedAward = awards.find((a) => a.id === selectedAwardId);
 
-    // Barcode modal
-    const [barcodeOpen, setBarcodeOpen] = useState(false);
-    const [barcodeValue, setBarcodeValue] = useState("");
-
     // --- helpers ---
     const parseDateValue = (val) => {
         if (!val) return null;
         const d = new Date(val);
         return isNaN(d) ? null : d;
-    };
-
-    // Random barcode: readable + unique-ish for the day (prefix + yyyymmdd + 6 base36)
-    const generateBarcodeId = () => {
-        const prefix = "RB"; // Redeem Barcode
-        const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-        const randPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-        return `${prefix}-${datePart}-${randPart}`;
     };
 
     // --- data load ---
@@ -133,9 +120,6 @@ export default function UserAward() {
             return;
         }
 
-        // Generate and attach barcode to the redemption (server must store this in redeem_history)
-        const barcodeId = generateBarcodeId();
-
         setCatalogLoading(true);
         try {
             const token = localStorage.getItem("token");
@@ -145,14 +129,14 @@ export default function UserAward() {
             try {
                 res = await api.post(
                     "/api/award/redeem",
-                    { awardId: selectedAwardId, barcodeId },   // 👈 include the barcode we want to persist
+                    { awardId: selectedAwardId }, 
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             } catch (e1) {
                 // Fallback: older server requires explicit userId
                 res = await api.post(
                     "/api/award/redeem",
-                    { userId: userData.id, awardId: selectedAwardId, barcodeId },
+                    { userId: userData.id, awardId: selectedAwardId }, 
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
             }
@@ -165,7 +149,7 @@ export default function UserAward() {
                 prev ? { ...prev, points: typeof newBalance === "number" ? newBalance : prev.points - cost } : prev
             );
 
-            // Refresh redeem history so each item includes stored barcodeId from Firestore
+            // Refresh redeem history
             try {
                 const resRedeem = await api.get(`/api/award/redeem-history?userId=${userData.id}`);
                 setRedeemHistory(Array.isArray(resRedeem.data) ? resRedeem.data : []);
@@ -179,20 +163,6 @@ export default function UserAward() {
         } finally {
             setCatalogLoading(false);
         }
-    };
-
-    // --- Barcode modal control (uses stored barcodeId from row) ---
-    const openBarcode = (barcodeIdFromRow) => {
-        if (!barcodeIdFromRow) {
-            alert("No barcode found for this reward.");
-            return;
-        }
-        setBarcodeValue(String(barcodeIdFromRow));
-        setBarcodeOpen(true);
-    };
-    const closeBarcode = () => {
-        setBarcodeOpen(false);
-        setBarcodeValue("");
     };
 
     return (
@@ -214,30 +184,6 @@ export default function UserAward() {
                         />
                     </div>
                     <button onClick={() => setScanning(false)} style={cancelBtnStyle}>Cancel</button>
-                </div>
-            )}
-
-            {/* Barcode Modal (shows stored barcodeId) */}
-            {barcodeOpen && (
-                <div style={overlayStyle}>
-                    <div style={{ background: "#fff", padding: 20, borderRadius: 12, width: "min(600px, 92%)", textAlign: "center" }}>
-                        <h2 style={{ marginBottom: 8 }}>Show this barcode to the shop</h2>
-
-                        <div style={{ background: "#ffffff", padding: 16, borderRadius: 8, display: "inline-block" }}>
-                            <Barcode
-                                value={barcodeValue}
-                                width={2}
-                                height={120}
-                                displayValue={true}
-                                fontSize={14}
-                                margin={0}
-                            />
-                        </div>
-
-                        <div style={{ marginTop: 18 }}>
-                            <button onClick={closeBarcode} style={secondaryBtn}>Close</button>
-                        </div>
-                    </div>
                 </div>
             )}
 
@@ -383,7 +329,7 @@ export default function UserAward() {
                 )}
             </div>
 
-            {/* Redeem History Table (shows barcode button using stored barcodeId) */}
+            {/* Redeem History Table */}
             <div className="waste-history" style={{ marginBottom: 20 }}>
                 <h2 style={{ marginBottom: 20 }}>Redeem History</h2>
                 {loading ? (
@@ -399,7 +345,6 @@ export default function UserAward() {
                                     <th>Reward</th>
                                     <th>Cost (pts)</th>
                                     <th>Redeemed Date</th>
-                                    <th>Barcode</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -412,30 +357,18 @@ export default function UserAward() {
                                         })
                                         .map((row, index) => {
                                             const d = parseDateValue(row.redeemedAt);
-                                            const hasBarcode = !!row.barcodeId; // 👈 backend must return this
                                             return (
                                                 <tr key={row.id || `${row.awardId}-${index}`}>
                                                     <td>{index + 1}</td>
                                                     <td>{row.awardName || row.awardId}</td>
                                                     <td>{row.cost ?? "-"}</td>
                                                     <td>{d ? d.toLocaleString() : "Invalid date"}</td>
-                                                    <td>
-                                                        <button
-                                                            className="add-button"
-                                                            onClick={() => openBarcode(row.barcodeId)}
-                                                            title={hasBarcode ? "Show barcode for this reward" : "No barcode found"}
-                                                            disabled={!hasBarcode}
-                                                            style={{ opacity: hasBarcode ? 1 : 0.6, cursor: hasBarcode ? "pointer" : "not-allowed" }}
-                                                        >
-                                                            Show Barcode
-                                                        </button>
-                                                    </td>
                                                 </tr>
                                             );
                                         })
                                 ) : (
                                     <tr>
-                                        <td colSpan="5" style={{ textAlign: "center" }}>No redeem history found</td>
+                                        <td colSpan="4" style={{ textAlign: "center" }}>No redeem history found</td>
                                     </tr>
                                 )}
                             </tbody>

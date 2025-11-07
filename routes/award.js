@@ -122,26 +122,11 @@ module.exports = (db) => {
     router.post("/redeem", authMiddleware, async (req, res) => {
         try {
             const authedUserId = req.user?.id || null;
-            const { userId: bodyUserId, awardId, barcodeId } = req.body;
+            const { userId: bodyUserId, awardId } = req.body;
 
             const userId = bodyUserId || authedUserId;
             if (!userId) return res.status(401).json({ error: "Unauthorized (no user)" });
             if (!awardId) return res.status(400).json({ error: "Missing awardId" });
-
-            // sanity-check barcodeId format/length
-            let barcodeToStore = typeof barcodeId === "string" && barcodeId.length <= 64 ? barcodeId : null;
-
-            // uniqueness check (fast path; not strictly required)
-            if (barcodeToStore) {
-                const dup = await db
-                    .collection("redeem_history")
-                    .where("barcodeId", "==", barcodeToStore)
-                    .limit(1)
-                    .get();
-                if (!dup.empty) {
-                    return res.status(400).json({ error: "Duplicate barcodeId" });
-                }
-            }
 
             const userRef = db.collection("users").doc(userId);
             const awardRef = db.collection("award").doc(awardId);
@@ -154,31 +139,31 @@ module.exports = (db) => {
             const award = awardSnap.data();
             const cost = Number(award.cost || 0);
 
-            if ((user.points || 0) < cost)
+            if ((user.points || 0) < cost) {
                 return res.status(400).json({ error: "Not enough points to redeem" });
+            }
 
             let newBalanceOut = (user.points || 0) - cost;
             let historyIdOut = null;
 
             await db.runTransaction(async (t) => {
-                const userDoc = await t.get(userRef);
-                const currentPoints = userDoc.data()?.points || 0;
+                const freshUserDoc = await t.get(userRef);
+                const currentPoints = freshUserDoc.data()?.points || 0;
                 const newBalance = currentPoints - cost;
                 if (newBalance < 0) throw new Error("Insufficient points (race)");
 
+                // deduct points
                 t.update(userRef, { points: newBalance });
 
+                // write redeem history (no barcode fields)
                 const historyRef = db.collection("redeem_history").doc();
                 historyIdOut = historyRef.id;
-
                 t.set(historyRef, {
                     userId,
                     awardId,
                     awardName: award.name,
                     cost,
                     redeemedAt: new Date(),
-                    barcodeId: barcodeToStore || null,   
-                    statusBarcode: "active",                    
                 });
 
                 newBalanceOut = newBalance;
@@ -189,8 +174,6 @@ module.exports = (db) => {
                 award,
                 newBalance: newBalanceOut,
                 redeemId: historyIdOut,
-                barcodeId: barcodeToStore || null,
-                statusBarcode: statusBarcode,
             });
         } catch (err) {
             console.error("Redeem award error:", err);
@@ -217,13 +200,12 @@ module.exports = (db) => {
 
     /* ---------------------------- REDEEM ---------------------------- */
 
-    // redeem-history (returns barcodeId automatically via ...data)
+    // redeem-history
     router.get("/redeem-history", authMiddleware, async (req, res) => {
         try {
             const { userId, limit: lim } = req.query;
 
             let q = db.collection("redeem_history");
-
             if (userId) {
                 q = q.where("userId", "==", userId).orderBy("redeemedAt", "desc");
             } else {
@@ -236,9 +218,13 @@ module.exports = (db) => {
                 const data = doc.data();
                 let redeemedAt = data.redeemedAt;
                 if (redeemedAt?.toDate) redeemedAt = redeemedAt.toDate();
+
                 return {
                     id: doc.id,
-                    ...data,         // includes barcodeId if present
+                    userId: data.userId || null,
+                    awardId: data.awardId || null,
+                    awardName: data.awardName || null,
+                    cost: data.cost ?? null,
                     redeemedAt,
                 };
             });
