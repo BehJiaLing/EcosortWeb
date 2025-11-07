@@ -97,7 +97,7 @@ export default function Dashboard() {
             try {
                 setLoadingAccess(true);
                 const res = await api.get(`/api/access/roles/${role}/pages`);
-                setAllowedPages(res.data.pages); // e.g. ["Dashboard", "Waste Logs"]
+                setAllowedPages(res.data.pages); 
             } catch (err) {
                 console.error("Failed to fetch access pages:", err);
             } finally {
