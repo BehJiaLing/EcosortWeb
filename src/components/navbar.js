@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './Navbar.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faTimes, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import api from "../services/api";
 
 const Navbar = ({ toggleSidebar, isSidebarVisible }) => {
     const navigate = useNavigate();
@@ -24,10 +25,17 @@ const Navbar = ({ toggleSidebar, isSidebarVisible }) => {
 
     const roleName = getRoleName(roleId);
 
-    const handleLogout = () => {
-        localStorage.clear();
-        alert("Logged out successfully!");
-        navigate("/");
+    const handleLogout = async () => {
+        try {
+            await api.post("/api/auth/logout");
+            localStorage.clear();
+            alert("Logged out successfully!");
+            navigate("/login"); 
+        } catch (err) {
+            console.error("Logout error:", err);
+            localStorage.clear();
+            navigate("/login");
+        }
     };
 
     return (

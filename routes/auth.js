@@ -159,15 +159,19 @@ module.exports = (db) => {
             }
 
             // 🔸 Step 4: Generate JWT token
-            const token = jwt.sign(
-                { id: doc.id, email: user.email, role: user.role },
-                JWT_SECRET,
-                { expiresIn: '60m' }
-            );
+            const payload = { id: doc.id, email: user.email, role: user.role };
+            const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '60m' });
+            const isProd = process.env.NODE_ENV === 'production';
+            res.cookie("token", token, {
+                httpOnly: true,                    
+                secure: isProd,                    
+                sameSite: "lax",                   
+                maxAge: 60 * 60 * 1000,    
+                path: "/",
+            });
 
             // 🔸 Step 5: Respond
             return res.json({
-                token,
                 userId: doc.id,
                 userEmail: user.email,
                 role: user.role,
@@ -273,6 +277,12 @@ module.exports = (db) => {
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
+    });
+
+    // check token
+    router.get("/meAccess", authMiddleware, (req, res) => {
+        // req.user comes from JWT: { id, email, role }
+        res.json({ user: req.user });
     });
 
     // request password reset with current password
@@ -416,6 +426,19 @@ module.exports = (db) => {
             res.status(500).json({ error: "Failed to update username" });
         }
     });
+
+    router.post("/logout", (req, res) => {
+        const isProd = process.env.NODE_ENV === "production";
+
+        res.clearCookie("token", {
+            httpOnly: true,
+            secure: isProd,
+            sameSite: "lax",
+        });
+
+        res.json({ message: "Logged out" });
+    });
+
 
     return router;
 };
