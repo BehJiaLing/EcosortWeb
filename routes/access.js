@@ -1,10 +1,11 @@
-// routes/access.js
+const express = require('express');
+const authMiddleware = require("../middleware/authMiddleware");
+
 module.exports = (db) => {
-    const express = require('express');
     const router = express.Router();
 
     // Get all roles
-    router.get('/roles', async (req, res) => {
+    router.get('/roles', authMiddleware, async (req, res) => {
         try {
             const snap = await db.collection('Roles').get();
             const roles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -15,7 +16,7 @@ module.exports = (db) => {
     });
 
     // Add new role
-    router.post('/roles', async (req, res) => {
+    router.post('/roles', authMiddleware, async (req, res) => {
         try {
             const { roleName } = req.body;
             const ref = await db.collection('Roles').add({ roleName, accessiblePages: [] });
@@ -26,7 +27,7 @@ module.exports = (db) => {
     });
 
     // Update role name
-    router.put('/roles/:id', async (req, res) => {
+    router.put('/roles/:id', authMiddleware, async (req, res) => {
         try {
             const { roleName } = req.body;
             const ref = db.collection('Roles').doc(req.params.id);
@@ -38,7 +39,7 @@ module.exports = (db) => {
     });
 
     // Update role page access
-    router.put('/roles/:id/pages', async (req, res) => {
+    router.put('/roles/:id/pages', authMiddleware, async (req, res) => {
         try {
             const { pages } = req.body; // array of page IDs
             const ref = db.collection('Roles').doc(req.params.id);
@@ -50,7 +51,7 @@ module.exports = (db) => {
     });
 
     // Get accessible pages for a role
-    router.get('/roles/:id/pages', async (req, res) => {
+    router.get('/roles/:id/pages', authMiddleware, async (req, res) => {
         try {
             const roleRef = db.collection('Roles').doc(req.params.id);
             const roleDoc = await roleRef.get();
@@ -67,7 +68,7 @@ module.exports = (db) => {
     });
 
     // Get all pages
-    router.get('/pages', async (req, res) => {
+    router.get('/pages', authMiddleware, async (req, res) => {
         try {
             const snap = await db.collection('Pages').get();
             const pages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -78,7 +79,7 @@ module.exports = (db) => {
     });
 
     // Delete a role by ID
-    router.delete('/roles/:id', async (req, res) => {
+    router.delete('/roles/:id', authMiddleware, async (req, res) => {
         try {
             const roleRef = db.collection('Roles').doc(req.params.id);
             const docSnap = await roleRef.get();
@@ -95,7 +96,7 @@ module.exports = (db) => {
     });
 
     // Get user list by role ID
-    router.get('/roles/:id/users', async (req, res) => {
+    router.get('/roles/:id/users', authMiddleware, async (req, res) => {
         try {
             const roleId = req.params.id;
             // return users whose `role` field equals the role doc id
@@ -129,7 +130,7 @@ module.exports = (db) => {
     // }); 
 
     // --- NEW: remove user from role (set role to default 'user' role id if exists, else null) ---
-    router.delete('/roles/:id/users/:userId', async (req, res) => {
+    router.delete('/roles/:id/users/:userId', authMiddleware, async (req, res) => {
         try {
             const roleId = req.params.id;
             const { userId } = req.params;
@@ -169,7 +170,7 @@ module.exports = (db) => {
         }
     });
 
-    router.get('/roles/:id', async (req, res) => {
+    router.get('/roles/:id', authMiddleware, async (req, res) => {
         try {
             const roleRef = db.collection('Roles').doc(req.params.id);
             const roleDoc = await roleRef.get();

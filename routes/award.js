@@ -1,12 +1,13 @@
+const express = require("express");
+const authMiddleware = require("../middleware/authMiddleware");
+
 module.exports = (db) => {
-    const express = require("express");
-    const authMiddleware = require("../middleware/authMiddleware");
     const router = express.Router();
 
     /* ----------------------------- REWARD RANKING ----------------------------- */
 
     // list the users with points (optionally filtered by month)
-    router.get("/users", async (req, res) => {
+    router.get("/users", authMiddleware, async (req, res) => {
         try {
             const { month } = req.query;
             const allowedRoles = ["YnEt3wtlZpDFL2N6EHoH", "mfPFOoUlvIuMgmjHova3"];
@@ -184,7 +185,7 @@ module.exports = (db) => {
     /* ---------------------------- REDEEM and USER AWARD ---------------------------- */
 
     // GET all awards
-    router.get("/catalog", async (req, res) => {
+    router.get("/catalog", authMiddleware, async (req, res) => {
         try {
             const snapshot = await db.collection("award").get();
             const awards = snapshot.docs.map((doc) => ({
