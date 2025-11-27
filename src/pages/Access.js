@@ -29,14 +29,8 @@ export default function Access({ setActiveContent, setSelectedRole }) {
     };
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            localStorage.clear();
-            navigate('/error');
-        } else {
-            fetchRoles(true);
-        }
-    }, [navigate]);
+        fetchRoles(true);
+    }, []);
 
     // Add role
     // const addRole = async () => {

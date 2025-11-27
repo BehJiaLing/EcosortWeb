@@ -24,15 +24,8 @@ export default function Profile() {
     const [phone, setPhone] = useState("Not yet Setup");
     const [editingPhone, setEditingPhone] = useState(false); // 👈 phone editing spinner
 
-    // Token checking & fetch user data
+    // fetch user data
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            localStorage.clear();
-            navigate("/error");
-            return;
-        }
-
         const fetchUser = async () => {
             try {
                 const res = await api.get("/api/auth/me");
@@ -66,7 +59,7 @@ export default function Profile() {
         // 🔄 auto-refresh every 10 seconds
         // const intervalId = setInterval(fetchUser, 10000);
         // return () => clearInterval(intervalId); // cleanup on unmount
-    }, [navigate]);
+    }, []);
 
     // Toggle password visibility with verification
     const handleTogglePassword = async () => {
@@ -120,6 +113,8 @@ export default function Profile() {
             await api.put("/api/auth/update-username", { username: newUsername });
             setUser((prev) => ({ ...prev, username: newUsername }));
             alert("Username updated successfully!");
+            localStorage.setItem("username", newUsername);
+            window.location.reload();
         } catch (err) {
             console.error("Failed to update username:", err);
             alert("Error updating username.");

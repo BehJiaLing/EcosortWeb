@@ -30,14 +30,8 @@ export default function Award() {
     };
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            localStorage.clear();
-            navigate("/error");
-            return;
-        }
         fetchUsers();
-    }, [navigate]);
+    }, []);
 
     // Month change
     const handleMonthChange = (e) => {

@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import api from "../services/api";
 import "./Auth.css";
 
 function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [loading, setLoading] = useState(false); 
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
@@ -15,43 +16,22 @@ function LoginPage() {
         setLoading(true);
 
         try {
-            // const response = await fetch("http://172.20.10.3:5000/api/auth/login", {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ email, password }),
-            // });
+            const res = await api.post("/api/auth/login", { email, password });
 
-            const response = await fetch("http://localhost:5000/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
-            });
+            // axios puts data in res.data (no res.json(), no res.ok)
+            const { role, userUsername, userId, userEmail } = res.data;
+            localStorage.setItem("role", JSON.stringify(role));
+            localStorage.setItem("username", userUsername);
+            localStorage.setItem("userId", userId);
+            // localStorage.setItem("userEmail", userEmail);
 
-            // const API_BASE = "https://b44809ef6990.ngrok-free.app";
-
-            // const response = await fetch(`${API_BASE}/api/auth/login`, {
-            //     method: "POST",
-            //     headers: { "Content-Type": "application/json" },
-            //     body: JSON.stringify({ email, password }),
-            // });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // save token + user data
-                // console.log("Login successful:", response, data);
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("role", JSON.stringify(data.role));
-                localStorage.setItem("username", data.userUsername);
-
-                alert("Login Successful!");
-                navigate("/dashboard");
-            } else {
-                alert(data.error || "Login failed. Please try again.");
-            }
+            alert("Login Successful!");
+            navigate("/dashboard");
         } catch (err) {
-            console.error(err);
-            alert("Server error. Please try again later.");
+            console.error("Login error:", err);
+            const errorMsg =
+                err.response?.data?.error || "Login failed. Please try again.";
+            alert(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -99,9 +79,7 @@ function LoginPage() {
                     </button>
 
                     <p className="forgot-password">
-                        <a href="/reset-password">
-                            Forgot Password?
-                        </a>
+                        <a href="/reset-password">Forgot Password?</a>
                     </p>
 
                     <p className="signup-text">

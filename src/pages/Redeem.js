@@ -65,7 +65,6 @@ export default function Redeem() {
         }
 
         try {
-            const token = localStorage.getItem("token");
             const payload = {
                 id: id?.trim() ? id.trim() : undefined,
                 name: name.trim(),
@@ -75,13 +74,9 @@ export default function Redeem() {
             const exists = awards.some((a) => a.id === id);
 
             if (exists) {
-                await api.put(`/api/award/${id}`, payload, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                await api.put(`/api/award/${id}`, payload);
             } else {
-                await api.post("/api/award/add", payload, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                await api.post("/api/award/add", payload);
             }
 
             alert("✅ Award saved successfully.");
@@ -96,10 +91,7 @@ export default function Redeem() {
     const handleDeleteAward = async (id) => {
         if (!window.confirm("Delete this award?")) return;
         try {
-            const token = localStorage.getItem("token");
-            await api.delete(`/api/award/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await api.delete(`/api/award/${id}`);
             fetchAwards();
             alert("🗑️ Award deleted successfully.");
         } catch (err) {
@@ -111,10 +103,7 @@ export default function Redeem() {
     // ======= History APIs =======
     const fetchUserInfo = async (userId) => {
         try {
-            const token = localStorage.getItem("token");
-            const res = await api.get(`/api/award/user/${userId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await api.get(`/api/award/user/${userId}`);
             if (res?.data) setHistoryUserInfo(res.data);
         } catch (err) {
             console.error("Failed to fetch user info:", err);
@@ -125,10 +114,7 @@ export default function Redeem() {
     const fetchAllRedeemHistory = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const res = await api.get(`/api/award/redeem-history`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await api.get(`/api/award/redeem-history`);
             const rows = Array.isArray(res.data) ? res.data : [];
             setRedeemHistory(rows);
             setHistoryUserId(null);
@@ -146,10 +132,7 @@ export default function Redeem() {
         if (!userId) return;
         try {
             setLoading(true);
-            const token = localStorage.getItem("token");
-            const res = await api.get(`/api/award/redeem-history?userId=${userId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await api.get(`/api/award/redeem-history?userId=${userId}`);
             const rows = Array.isArray(res.data) ? res.data : [];
             setRedeemHistory(rows);
             setHistoryUserId(userId);

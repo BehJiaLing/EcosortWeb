@@ -33,13 +33,6 @@ export default function UserAward() {
     // --- data load ---
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem("token");
-            if (!token) {
-                localStorage.clear();
-                navigate("/error");
-                return;
-            }
-
             const resUser = await api.get("/api/auth/me");
             setUserData(resUser.data);
 
@@ -69,14 +62,10 @@ export default function UserAward() {
 
             setLoading(true);
             try {
-                const token = localStorage.getItem("token");
-                const res = await api.post(
-                    "/api/award/collect",
-                    { wasteId },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                const res = await api.post("/api/award/collect", { wasteId });
+
                 alert(`✅ Collected! You earned ${res.data.points} points.`);
-                await fetchData();
+                await fetchData(); // refresh points + histories
             } catch (err) {
                 console.error("Collect error:", err);
                 alert(`❌ Failed: ${err.response?.data?.error || err.message}`);
@@ -114,6 +103,7 @@ export default function UserAward() {
             alert("User data not ready.");
             return;
         }
+
         const cost = Number(selectedAward?.cost ?? 0);
         if (userData.points < cost) {
             alert("Not enough points to redeem this award.");
@@ -122,38 +112,49 @@ export default function UserAward() {
 
         setCatalogLoading(true);
         try {
-            const token = localStorage.getItem("token");
-
-            // Primary: server infers user from token
+            // Primary: server infers user from JWT cookie
             let res;
             try {
-                res = await api.post(
-                    "/api/award/redeem",
-                    { awardId: selectedAwardId }, 
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                res = await api.post("/api/award/redeem", {
+                    awardId: selectedAwardId,
+                });
             } catch (e1) {
                 // Fallback: older server requires explicit userId
-                res = await api.post(
-                    "/api/award/redeem",
-                    { userId: userData.id, awardId: selectedAwardId }, 
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                res = await api.post("/api/award/redeem", {
+                    userId: userData.id,
+                    awardId: selectedAwardId,
+                });
             }
 
             const { newBalance, award } = res.data || {};
-            alert(`✅ Redeemed “${award?.name || selectedAwardId}”. New balance: ${newBalance} pts.`);
+            alert(
+                `✅ Redeemed “${award?.name || selectedAwardId}”. New balance: ${newBalance} pts.`
+            );
 
             // Update points locally
             setUserData((prev) =>
-                prev ? { ...prev, points: typeof newBalance === "number" ? newBalance : prev.points - cost } : prev
+                prev
+                    ? {
+                        ...prev,
+                        points:
+                            typeof newBalance === "number"
+                                ? newBalance
+                                : prev.points - cost,
+                    }
+                    : prev
             );
 
             // Refresh redeem history
             try {
-                const resRedeem = await api.get(`/api/award/redeem-history?userId=${userData.id}`);
-                setRedeemHistory(Array.isArray(resRedeem.data) ? resRedeem.data : []);
-            } catch { /* ignore */ }
+                const resRedeem = await api.get(
+                    `/api/award/redeem-history?userId=${userData.id}`
+                );
+                setRedeemHistory(
+                    Array.isArray(resRedeem.data) ? resRedeem.data : []
+                );
+            } catch {
+                /* ignore */
+            }
 
             setSelectedAwardId(null);
             setRedeemModalOpen(false);

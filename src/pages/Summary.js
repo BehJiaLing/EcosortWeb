@@ -97,12 +97,6 @@ export default function Summary() {
     // Fetch logs (exclude soft-deleted) + build Summary doughnut from filtered logs
     const fetchData = async () => {
         try {
-            const token = localStorage.getItem("token");
-            if (!token) {
-                localStorage.clear();
-                navigate("/error");
-                return;
-            }
 
             // Logs for table + charts
             const resLogs = await api.get("/api/waste/all");

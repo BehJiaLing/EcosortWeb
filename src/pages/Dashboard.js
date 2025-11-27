@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from "jwt-decode";
 import api from '../services/api';
 import Navbar from '../components/navbar';
 import Sidebar from '../components/sidebar';
@@ -28,31 +27,26 @@ export default function Dashboard() {
 
     // --- User session token checking ---
     useEffect(() => {
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-            localStorage.clear();
-            navigate("/error");
-            return;
-        }
-
-        try {
-            const decoded = jwtDecode(token);
-
-            if (decoded.exp < Date.now() / 1000) {
-                localStorage.clear();
-                navigate("/error");
+        const checkSession = async () => {
+            try {
+                await api.get("/api/auth/meAccess");
+            } catch (err) {
+                console.error("Session check failed:", err);
+                if (err.response?.status === 401) {
+                    localStorage.clear();       
+                    navigate("/error");         
+                }
             }
-        } catch (err) {
-            console.log("Invalid token:", err);
-            localStorage.clear();
-            navigate("/error");
-        }
+        };
+
+        checkSession();
     }, [navigate]);
+
 
     // --- Handle menu click ---
     const handleMenuClick = (menu) => {
         setActiveContent(menu);
+        localStorage.setItem("activeContent", menu);
     };
 
     // --- When a date is clicked in WasteLogDates ---
@@ -66,12 +60,19 @@ export default function Dashboard() {
 
     useEffect(() => {
         const savedRole = localStorage.getItem("role");
-        if (savedRole) {
-            const parsedRole = JSON.parse(savedRole);
-            setRole(parsedRole);
+        const storedActive = localStorage.getItem("activeContent");
 
-            // Default content based on role
-            if (parsedRole === "YnEt3wtlZpDFL2N6EHoH") { // Example: "User" role ID
+        let parsedRole = null;
+
+        if (savedRole) {
+            parsedRole = JSON.parse(savedRole);
+            setRole(parsedRole);
+        }
+
+        if (storedActive) {
+            setActiveContent(storedActive);
+        } else {
+            if (parsedRole === "YnEt3wtlZpDFL2N6EHoH") {  
                 setActiveContent("User Reward");
             } else {
                 setActiveContent("Dashboard");

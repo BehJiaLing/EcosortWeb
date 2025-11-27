@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import "./Auth.css";
+import api from "../services/api";
 
 function NewPassword() {
     const [searchParams] = useSearchParams();
@@ -26,27 +27,25 @@ function NewPassword() {
         }
 
         try {
-            const res = await fetch("http://localhost:5000/api/auth/new-password", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, token, newPassword }),
+            const res = await api.post("/api/auth/new-password", {
+                email,
+                token,
+                newPassword,
             });
 
-            const data = await res.json();
-            if (res.ok) {
-                alert(data.message);
-                // Clear inputs
-                setNewPassword("");
-                setConfirmPassword("");
-                setShowNewPassword(false);
-                setShowConfirmPassword(false);
-                // Redirect to login
-                navigate("/login");
-            } else {
-                alert(data.error);
-            }
+            alert(res.data?.message || "Password updated successfully.");
+
+            // Clear inputs
+            setNewPassword("");
+            setConfirmPassword("");
+            setShowNewPassword(false);
+            setShowConfirmPassword(false);
+
+            navigate("/login");
         } catch (err) {
-            alert("Something went wrong.");
+            console.error("Reset password error:", err);
+            const msg = err.response?.data?.error || "Something went wrong.";
+            alert(msg);
         } finally {
             setLoading(false);
         }

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./Auth.css";
+import api from "../services/api"; 
 
 function ResetPassword() {
     const [email, setEmail] = useState("");
@@ -11,20 +12,12 @@ function ResetPassword() {
         setLoading(true);
 
         try {
-            const res = await fetch("http://localhost:5000/api/auth/reset-password", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                alert(data.message);
-            } else {
-                alert(data.error);
-            }
+            const res = await api.post("/api/auth/reset-password", { email });
+            alert(res.data?.message || "Reset email sent (if account exists).");
         } catch (err) {
-            alert("Something went wrong.");
+            console.error("Reset password error:", err);
+            const msg = err.response?.data?.error || "Something went wrong.";
+            alert(msg);
         } finally {
             setLoading(false);
         }

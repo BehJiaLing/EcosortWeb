@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa"; 
 import "./Auth.css";
+import api from "../services/api";
 
 function SignupPage() {
     const [username, setUsername] = useState("");
@@ -33,30 +34,26 @@ function SignupPage() {
         
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:5000/api/auth/signup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, email, password }),
+            const res = await api.post("/api/auth/signup", {
+                username,
+                email,
+                password,
             });
 
-            const data = await response.json();
+            alert(res.data?.message || "Signup successful! Please check your email.");
+            navigate("/login");
 
-            if (response.ok) {
-                alert(data.message);
-                navigate("/login");
-                setUsername("");
-                setEmail("");
-                setPassword("");
-                setConfirmPassword("");
-            } else {
-                alert(data.error);
-            }
-
+            // clear inputs
+            setUsername("");
+            setEmail("");
+            setPassword("");
+            setConfirmPassword("");
         } catch (err) {
-            console.error(err);
-            alert("Server error. Please try again later.");
+            console.error("Signup error:", err);
+            const msg = err.response?.data?.error || "Server error. Please try again later.";
+            alert(msg);
         } finally {
-            setLoading(false); // 🔹 Stop loading
+            setLoading(false);
         }
     };
 
