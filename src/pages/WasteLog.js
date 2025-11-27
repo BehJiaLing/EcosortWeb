@@ -27,14 +27,8 @@ export default function WasteLog({ onDateClick }) {
     };
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            localStorage.clear();
-            navigate("/error");
-        } else {
-            fetchLogs(true);
-        }
-    }, [navigate]);
+        fetchLogs(true);
+    }, []);
 
     const formatDate = (timestamp) => timestamp.split(" ")[0];
 

@@ -62,6 +62,7 @@ export default function WasteLogDetails({ date }) {
             await api.delete(`/api/waste/${id}`);
             // Soft-deleted on backend; hide it locally by marking deleted
             setLogs(prev => prev.map(l => l.id === id ? { ...l, deleted: true } : l).filter(l => l.deleted !== true));
+            alert("Log marked as deleted");
         } catch (err) {
             console.error(err);
             alert(err.response?.data?.error || "Error deleting log");

@@ -92,6 +92,7 @@ export default function Tracking() {
         try {
             await api.patch(`/api/waste/${id}/restore`);
             setAllRows((prev) => prev.filter((r) => r.id !== id));
+            alert("Log restored successfully");
         } catch (err) {
             console.error(err);
             alert(err.response?.data?.error || "Failed to restore");

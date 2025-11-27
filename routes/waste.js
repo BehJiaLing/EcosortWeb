@@ -1,15 +1,67 @@
+const express = require("express");
+const authMiddleware = require("../middleware/authMiddleware");
+
 module.exports = (db) => {
-    const express = require("express");
     const router = express.Router();
-    const authMiddleware = require("../middleware/authMiddleware");
+    const { decryptField } = require('../utils/crypto');
 
     // Get latest waste logs (public)
-    router.get('/', async (req, res) => {
+    router.get('/', authMiddleware, async (req, res) => {
         try {
-            const snap = await db.collection('waste_data').orderBy('timestamp', 'desc').get();
-            const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const snap = await db
+                .collection('waste_data')
+                .orderBy('timestamp', 'desc')
+                .get();
+
+            const items = snap.docs.map(d => {
+                const data = d.data();
+
+                const waste_class =
+                    decryptField(data.waste_class) ||
+                    data.waste_class ||
+                    null;
+
+                const prediction =
+                    decryptField(data.prediction) ||
+                    data.prediction ||
+                    null;
+
+                const confidenceStr =
+                    decryptField(data.confidence) ??
+                    (data.confidence != null ? String(data.confidence) : null);
+
+                const recycleProbStr =
+                    decryptField(data.recycle_prob) ??
+                    (data.recycle_prob != null ? String(data.recycle_prob) : null);
+
+                const confidence =
+                    confidenceStr != null ? parseFloat(confidenceStr) : null;
+
+                const recycle_prob =
+                    recycleProbStr != null ? parseFloat(recycleProbStr) : null;
+
+                const image_base64 =
+                    decryptField(data.image_base64) ||
+                    data.image_base64 ||
+                    null;
+
+                return {
+                    id: d.id,
+                    waste_class,
+                    prediction,
+                    confidence,
+                    recycle_prob,
+                    image_base64,
+                    timestamp: data.timestamp,
+                    points: data.points,
+                    collected: data.collected,
+                    deleted: data.deleted,
+                };
+            });
+
             res.json(items);
         } catch (err) {
+            console.error("Error fetching waste_data:", err);
             res.status(500).json({ error: err.message });
         }
     });
@@ -118,10 +170,16 @@ module.exports = (db) => {
             let totalNonRecyclable = 0;
 
             snap.forEach(doc => {
-                const { prediction, deleted } = doc.data() || {};
+                const data = doc.data() || {};
+                const { deleted } = data;
 
                 // Skip soft-deleted logs
                 if (deleted === true) return;
+
+                const prediction =
+                    decryptField(data.prediction) ||
+                    data.prediction ||
+                    null;
 
                 if (prediction === "Recyclable") totalRecyclable++;
                 else if (prediction === "Non-Recyclable") totalNonRecyclable++;
@@ -133,7 +191,6 @@ module.exports = (db) => {
             res.status(500).json({ error: "Failed to fetch waste summary" });
         }
     });
-
 
     // 🔹 Get current user's waste logs
     // router.get('/user', authMiddleware, async (req, res) => {
@@ -159,10 +216,9 @@ module.exports = (db) => {
                 .orderBy('timestamp', 'desc')
                 .get();
 
-            // Filter out soft-deleted first to avoid unnecessary lookups
             const activeDocs = snap.docs.filter(d => {
                 const data = d.data() || {};
-                return data.deleted !== true; // only keep non-deleted
+                return data.deleted !== true;
             });
 
             const logs = await Promise.all(
@@ -170,14 +226,20 @@ module.exports = (db) => {
                     const data = d.data() || {};
                     const wasteId = d.id;
 
-                    // Default username
-                    let username = "Nobody Claimed";
+                    const waste_class =
+                        decryptField(data.waste_class) ||
+                        data.waste_class ||
+                        null;
 
-                    // If points === 0, mark as not claimable and skip history lookup
+                    const prediction =
+                        decryptField(data.prediction) ||
+                        data.prediction ||
+                        null;
+
+                    let username = "Nobody Claimed";
                     if (data.points === 0) {
                         username = "Not Claimable";
                     } else {
-                        // Try to find matching waste_history for this wasteId
                         const historySnap = await db.collection('waste_history')
                             .where('wasteId', '==', wasteId)
                             .limit(1)
@@ -188,7 +250,6 @@ module.exports = (db) => {
                             const userId = historyData.userId;
 
                             if (userId) {
-                                // Lookup username from users collection
                                 const userDoc = await db.collection('users').doc(userId).get();
                                 if (userDoc.exists) {
                                     username = userDoc.data()?.username || "Nobody Claimed";
@@ -201,8 +262,10 @@ module.exports = (db) => {
                         id: wasteId,
                         wasteId,
                         collectedAt: data.timestamp || null,
-                        prediction: data.prediction || null,
-                        waste_class: data.waste_class || null,
+
+                        prediction,
+                        waste_class,
+
                         pointsCollected: data.points ?? null,
                         username,
                     };
@@ -241,10 +304,16 @@ module.exports = (db) => {
 
                     // const waste = wasteSnap.data();
 
+                    const waste_class =
+                        decryptField(record.waste_class) ||
+                        record.waste_class ||
+                        "Unknown";
+
+
                     return {
                         id: doc.id,
                         wasteId,
-                        waste_class: record.waste_class || "Unknown",
+                        waste_class,
                         collectedAt: record.collectedAt.toDate().toISOString(),
                         // prediction: waste.prediction,
                         pointsCollected: record.pointsCollected,
@@ -273,9 +342,63 @@ module.exports = (db) => {
             if (user) q = q.where("deletedBy", "==", user);
 
             const snap = await q.get();
-            const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            const items = snap.docs.map((d) => {
+                const data = d.data() || {};
+
+                const waste_class =
+                    decryptField(data.waste_class) ||
+                    data.waste_class ||
+                    null;
+
+                const prediction =
+                    decryptField(data.prediction) ||
+                    data.prediction ||
+                    null;
+
+                const confidenceStr =
+                    decryptField(data.confidence) ??
+                    (data.confidence != null ? String(data.confidence) : null);
+
+                const recycleProbStr =
+                    decryptField(data.recycle_prob) ??
+                    (data.recycle_prob != null ? String(data.recycle_prob) : null);
+
+                const confidence =
+                    confidenceStr != null ? parseFloat(confidenceStr) : null;
+
+                const recycle_prob =
+                    recycleProbStr != null ? parseFloat(recycleProbStr) : null;
+
+                const image_base64 =
+                    decryptField(data.image_base64) ||
+                    data.image_base64 ||
+                    null;
+
+                return {
+                    id: d.id,
+
+                    waste_class,
+                    prediction,
+                    confidence,
+                    recycle_prob,
+                    image_base64,
+
+                    timestamp: data.timestamp || null,
+                    deletedAt: data.deletedAt || null,
+                    deletedBy: data.deletedBy || null,
+                    points: data.points ?? null,
+                    collected: data.collected ?? null,
+                };
+            });
+
             // Sort newest first by deletedAt (fallback to timestamp)
-            items.sort((a, b) => new Date(b.deletedAt || b.timestamp || 0) - new Date(a.deletedAt || a.timestamp || 0));
+            items.sort(
+                (a, b) =>
+                    new Date(b.deletedAt || b.timestamp || 0) -
+                    new Date(a.deletedAt || a.timestamp || 0)
+            );
+
             res.json(items);
         } catch (err) {
             console.error("GET /deleted error:", err);
