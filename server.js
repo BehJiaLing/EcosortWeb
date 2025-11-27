@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const admin = require('firebase-admin');
 const path = require('path');
 const cron = require('node-cron');
+const cookieParser = require("cookie-parser");
 
 // --- Initialize Firebase Admin ---
 const serviceAccount = require('./firebase-key.json'); 
@@ -16,11 +17,15 @@ const db = admin.firestore();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
+app.use(
+    cors({
+        origin: "http://localhost:3000",
+        credentials: true,
+    })
+);
 app.use(helmet());
 app.use(morgan('dev'));
-
-// --- Routes ---
 app.use('/api/auth', require('./routes/auth')(db));
 app.use('/api/waste', require('./routes/waste')(db));
 app.use('/api/access', require('./routes/access')(db));
